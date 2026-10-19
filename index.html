@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Digital Clock Studio</title>
+  <style>
+    /* ==========================================================================
+       1. BASE & RESET STYLES
+       ========================================================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    :root {
+      --bg-color: #000000;
+      --text-color: #ffffff;
+      --sub-color: rgba(255, 255, 255, 0.7);
+      --panel-bg: rgba(20, 20, 25, 0.85);
+      --panel-text: #ffffff;
+      --panel-border: rgba(255, 255, 255, 0.15);
+      --accent-color: #3b82f6;
+      --accent-hover: #2563eb;
+      --item-bg: rgba(255, 255, 255, 0.08);
+      --item-active: rgba(59, 130, 246, 0.3);
+      --item-active-border: #3b82f6;
+      --font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: var(--font-family);
+      transition: background-color 0.4s ease, color 0.4s ease;
+    }
+
+    /* ==========================================================================
+       2. FONT FAMILIES
+       ========================================================================== */
+    /* 1. Digital Segment Style */
+    .font-digital {
+      font-family: 'Courier New', Courier, Consolas, 'Lucida Console', Monaco, monospace;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+
+    /* 2. Modern Sans-Serif */
+    .font-sans {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+    }
+
+    /* 3. Classic Serif */
+    .font-serif {
+      font-family: Georgia, 'Times New Roman', Times, 'Yu Mincho', serif;
+      font-variant-numeric: tabular-nums;
+      font-weight: 500;
+    }
+
+    /* 4. Soft Rounded */
+    .font-rounded {
+      font-family: 'Arial Rounded MT Bold', 'Quicksand', 'Nunito', 'Fredoka', 'Varela Round', system-ui, sans-serif;
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+    }
+
+    /* 5. Slim & Stylish */
+    .font-slim {
+      font-family: 'Futura', 'Avenir', 'Helvetica Neue', 'Trebuchet MS', sans-serif;
+      font-variant-numeric: tabular-nums;
+      font-weight: 200;
+      letter-spacing: 0.05em;
+    }
+
+    /* ==========================================================================
+       3. MAIN LAYOUT & CLOCK DISPLAY
+       ========================================================================== */
+    #app {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      position: relative;
+    }
+
+    /* Top Info Bar (Battery & Control Trigger) */
+    .top-bar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      z-index: 10;
+      opacity: 0.8;
+      transition: opacity 0.3s ease;
+    }
+
+    .top-bar:hover {
+      opacity: 1;
+    }
+
+    .battery-display {
+      font-size: 0.9rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: var(--sub-color);
+      letter-spacing: 0.02em;
+    }
+
+    .battery-icon {
+      display: inline-block;
+      width: 22px;
+      height: 11px;
+      border: 1.5px solid currentColor;
+      border-radius: 2px;
+      position: relative;
+      padding: 1px;
+    }
+
+    .battery-icon::after {
+      content: '';
+      position: absolute;
+      right: -3.5px;
+      top: 2px;
+      width: 2px;
+      height: 4px;
+      background: currentColor;
+      border-radius: 0 1px 1px 0;
+    }
+
+    .battery-level {
+      height: 100%;
+      background: currentColor;
+      border-radius: 0.5px;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    .settings-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text-color);
+      border-radius: 50%;
+      width: 42px;
+      height: 42px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      transition: all 0.2s ease;
+    }
+
+    .settings-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: scale(1.05);
+    }
+
+    .settings-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+
+    /* Clock Container */
+    .clock-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      position: relative;
+    }
+
+    /* Landscape Time Display (Horizontal) */
+    .time-display-landscape {
+      display: flex;
+      justify-content: center;
+      align-items: baseline;
+      white-space: nowrap;
+      line-height: 1;
+      text-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    /* 4-Stage Size Variations - Landscape */
+    .size-small .time-display-landscape {
+      font-size: min(12vw, 20vh);
+    }
+    .size-medium .time-display-landscape {
+      font-size: min(18vw, 30vh);
+    }
+    .size-large .time-display-landscape {
+      font-size: min(24vw, 42vh);
+    }
+    /* 特大: 画面占有率約8割 */
+    .size-xlarge .time-display-landscape {
+      font-size: min(32vw, 68vh);
+    }
+
+    /* Portrait Time Display (Vertical Stack) */
+    .time-display-portrait {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      line-height: 0.88;
+      text-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    /* 4-Stage Size Variations - Portrait */
+    .size-small .time-display-portrait {
+      font-size: min(18vw, 12vh);
+    }
+    .size-medium .time-display-portrait {
+      font-size: min(26vw, 18vh);
+    }
+    .size-large .time-display-portrait {
+      font-size: min(34vw, 25vh);
+    }
+    /* 特大: 画面占有率約8割 */
+    .size-xlarge .time-display-portrait {
+      font-size: min(48vw, 36vh);
+    }
+
+    .portrait-unit {
+      display: block;
+      text-align: center;
+    }
+
+    .portrait-divider {
+      height: 0.08em;
+      width: 40%;
+      background-color: var(--sub-color);
+      opacity: 0.3;
+      margin: 0.1em 0;
+      border-radius: 2px;
+    }
+
+    /* Seconds styling */
+    .seconds-text {
+      opacity: 0.85;
+    }
+    .time-display-landscape .seconds-text {
+      font-size: 0.65em;
+      margin-left: 0.05em;
+    }
+
+    /* Date Container */
+    .date-container {
+      padding-bottom: clamp(1.2rem, 3vh, 2.5rem);
+      text-align: center;
+      z-index: 10;
+      transition: all 0.3s ease;
+    }
+
+    .date-text {
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      opacity: 0.85;
+      color: var(--sub-color);
+    }
+
+    .size-small .date-text {
+      font-size: clamp(0.8rem, 1.5vw, 1.1rem);
+    }
+    .size-medium .date-text {
+      font-size: clamp(0.95rem, 2vw, 1.4rem);
+    }
+    .size-large .date-text {
+      font-size: clamp(1.1rem, 2.5vw, 1.8rem);
+    }
+    .size-xlarge .date-text {
+      font-size: clamp(1.3rem, 3vw, 2.2rem);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* ==========================================================================
+       4. ORIENTATION MEDIA QUERIES
+       ========================================================================== */
+    @media (orientation: portrait) {
+      .time-display-landscape {
+        display: none !important;
+      }
+      .time-display-portrait {
+        display: flex !important;
+      }
+    }
+
+    @media (orientation: landscape) {
+      .time-display-landscape {
+        display: flex !important;
+      }
+      .time-display-portrait {
+        display: none !important;
+      }
+    }
+
+    /* ==========================================================================
+       5. SETTINGS PANEL (MODAL / DRAWER)
+       ========================================================================== */
+    .panel-backdrop {
+      position: fixed;
+      inset: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .panel-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .settings-panel {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.95);
+      width: min(90vw, 540px);
+      max-height: 85vh;
+      max-height: 85dvh;
+      background: var(--panel-bg);
+      color: var(--panel-text);
+      border: 1px solid var(--panel-border);
+      border-radius: 20px;
+      padding: 1.5rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      z-index: 101;
+      overflow-y: auto;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    }
+
+    .settings-panel::-webkit-scrollbar {
+      width: 6px;
+    }
+    .settings-panel::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+
+    .panel-backdrop.open .settings-panel {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1rem;
+      margin-bottom: 1.2rem;
+      border-bottom: 1px solid var(--panel-border);
+    }
+
+    .panel-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .close-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: var(--panel-text);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .close-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    .setting-group {
+      margin-bottom: 1.2rem;
+    }
+
+    .setting-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.6rem;
+      opacity: 0.7;
+    }
+
+    .options-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+      gap: 0.5rem;
+    }
+
+    .option-btn {
+      background: var(--item-bg);
+      border: 1px solid var(--panel-border);
+      color: var(--panel-text);
+      padding: 0.6rem 0.5rem;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.3rem;
+    }
+
+    .option-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .option-btn.active {
+      background: var(--item-active);
+      border-color: var(--item-active-border);
+      font-weight: 700;
+    }
+
+    .color-swatch {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .fullscreen-action-btn {
+      width: 100%;
+      background: var(--accent-color);
+      color: #ffffff;
+      border: none;
+      padding: 0.8rem;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: background 0.2s ease;
+    }
+
+    .fullscreen-action-btn:hover {
+      background: var(--accent-hover);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="app" class="font-sans size-large">
+    <!-- Top Information Bar -->
+    <header class="top-bar">
+      <div id="batteryDisplay" class="battery-display">
+        <span class="battery-icon"><span id="batteryLevel" class="battery-level"></span></span>
+        <span id="batteryText">---%</span>
+      </div>
+
+      <button id="openSettingsBtn" class="settings-btn" aria-label="Settings">
+        <svg viewBox="0 0 24 24">
+          <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Main Clock View -->
+    <main class="clock-container" id="clockContainer">
+      <!-- 横画面用 (Landscape Horizontal View) -->
+      <div id="landscapeClock" class="time-display-landscape">
+        <span id="landHH">00</span><span class="colon">:</span><span id="landMM">00</span><span id="landSS" class="seconds-text">:00</span>
+      </div>
+
+      <!-- 縦画面用 (Portrait Vertical Stack View) -->
+      <div id="portraitClock" class="time-display-portrait">
+        <span id="portHH" class="portrait-unit">00</span>
+        <div class="portrait-divider"></div>
+        <span id="portMM" class="portrait-unit">00</span>
+        <span id="portSS" class="portrait-unit seconds-text">00</span>
+      </div>
+    </main>
+
+    <!-- Date Footer View -->
+    <footer id="dateContainer" class="date-container">
+      <div id="dateText" class="date-text">----年--月--日（-）</div>
+    </footer>
+  </div>
+
+  <!-- Settings Drawer Panel -->
+  <div id="panelBackdrop" class="panel-backdrop">
+    <div class="settings-panel" id="settingsPanel" onclick="event.stopPropagation()">
+      <div class="panel-header">
+        <h2 id="panelTitle" class="panel-title">設定 / Settings</h2>
+        <button id="closeSettingsBtn" class="close-btn" aria-label="Close">&times;</button>
+      </div>
+
+      <!-- Font Selector -->
+      <div class="setting-group">
+        <div id="labelFont" class="setting-label">フォント / Font</div>
+        <div class="options-grid" id="fontOptions">
+          <button class="option-btn font-digital" data-font="font-digital"><span>1. LED</span></button>
+          <button class="option-btn font-sans" data-font="font-sans"><span>2. Modern</span></button>
+          <button class="option-btn font-serif" data-font="font-serif"><span>3. Serif</span></button>
+          <button class="option-btn font-rounded" data-font="font-rounded"><span>4. Round</span></button>
+          <button class="option-btn font-slim" data-font="font-slim"><span>5. Slim</span></button>
+        </div>
+      </div>
+
+      <!-- Font Color Selector -->
+      <div class="setting-group">
+        <div id="labelColor" class="setting-label">文字色 / Font Color</div>
+        <div class="options-grid" id="textColorOptions">
+          <button class="option-btn" data-color="white">
+            <span class="color-swatch" style="background: #FFFFFF;"></span>
+            <span class="color-name" data-key="colorWhite">White</span>
+          </button>
+          <button class="option-btn" data-color="cyan">
+            <span class="color-swatch" style="background: #00F3FF;"></span>
+            <span class="color-name" data-key="colorCyan">Cyan</span>
+          </button>
+          <button class="option-btn" data-color="amber">
+            <span class="color-swatch" style="background: #FFB800;"></span>
+            <span class="color-name" data-key="colorAmber">Amber</span>
+          </button>
+          <button class="option-btn" data-color="mint">
+            <span class="color-swatch" style="background: #00FF9D;"></span>
+            <span class="color-name" data-key="colorMint">Mint</span>
+          </button>
+          <button class="option-btn" data-color="rose">
+            <span class="color-swatch" style="background: #FF2E93;"></span>
+            <span class="color-name" data-key="colorRose">Rose</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Theme Color Selector -->
+      <div class="setting-group">
+        <div id="labelTheme" class="setting-label">背景色 / Theme</div>
+        <div class="options-grid" id="themeOptions">
+          <button class="option-btn" data-theme="black">
+            <span class="color-swatch" style="background: #000000;"></span>
+            <span class="theme-name" data-key="themeBlack">Black</span>
+          </button>
+          <button class="option-btn" data-theme="navy">
+            <span class="color-swatch" style="background: #101827;"></span>
+            <span class="theme-name" data-key="themeNavy">Navy</span>
+          </button>
+          <button class="option-btn" data-theme="green">
+            <span class="color-swatch" style="background: #10251D;"></span>
+            <span class="theme-name" data-key="themeGreen">Green</span>
+          </button>
+          <button class="option-btn" data-theme="gray">
+            <span class="color-swatch" style="background: #E8EAED; border-color: #bbb;"></span>
+            <span class="theme-name" data-key="themeGray">Gray</span>
+          </button>
+          <button class="option-btn" data-theme="ivory">
+            <span class="color-swatch" style="background: #F5F0E6; border-color: #bbb;"></span>
+            <span class="theme-name" data-key="themeIvory">Ivory</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Seconds Toggle -->
+      <div class="setting-group">
+        <div id="labelSeconds" class="setting-label">秒数表示 / Seconds</div>
+        <div class="options-grid" id="secondsOptions">
+          <button class="option-btn" data-seconds="on"><span data-key="optOn">ON</span></button>
+          <button class="option-btn" data-seconds="off"><span data-key="optOff">OFF</span></button>
+        </div>
+      </div>
+
+      <!-- 4-Stage Font Size Toggle -->
+      <div class="setting-group">
+        <div id="labelSize" class="setting-label">サイズ / Size</div>
+        <div class="options-grid" id="sizeOptions">
+          <button class="option-btn" data-size="size-small"><span data-key="optSmall">小</span></button>
+          <button class="option-btn" data-size="size-medium"><span data-key="optMedium">中</span></button>
+          <button class="option-btn" data-size="size-large"><span data-key="optLarge">大</span></button>
+          <button class="option-btn" data-size="size-xlarge"><span data-key="optXLarge">特大</span></button>
+        </div>
+      </div>
+
+      <!-- Date Toggle -->
+      <div class="setting-group">
+        <div id="labelDate" class="setting-label">年月日表示 / Date</div>
+        <div class="options-grid" id="dateOptions">
+          <button class="option-btn" data-date="on"><span data-key="optOn">ON</span></button>
+          <button class="option-btn" data-date="off"><span data-key="optOff">OFF</span></button>
+        </div>
+      </div>
+
+      <!-- Keep Awake (Wake Lock) Toggle -->
+      <div class="setting-group">
+        <div id="labelKeepAwake" class="setting-label">画面常時点灯 / Keep Awake</div>
+        <div class="options-grid" id="keepAwakeOptions">
+          <button class="option-btn" data-keepawake="on"><span data-key="optOn">ON</span></button>
+          <button class="option-btn" data-keepawake="off"><span data-key="optOff">OFF</span></button>
+        </div>
+      </div>
+
+      <!-- Language Switch -->
+      <div class="setting-group">
+        <div id="labelLang" class="setting-label">言語 / Language</div>
+        <div class="options-grid" id="langOptions">
+          <button class="option-btn" data-lang="ja"><span>日本語</span></button>
+          <button class="option-btn" data-lang="en"><span>English</span></button>
+        </div>
+      </div>
+
+      <!-- Battery Indicator Toggle -->
+      <div class="setting-group">
+        <div id="labelBattery" class="setting-label">バッテリー表示 / Battery</div>
+        <div class="options-grid" id="batteryOptions">
+          <button class="option-btn" data-battery="on"><span data-key="optOn">ON</span></button>
+          <button class="option-btn" data-battery="off"><span data-key="optOff">OFF</span></button>
+        </div>
+      </div>
+
+      <!-- Fullscreen Button -->
+      <div class="setting-group">
+        <button id="fullscreenBtn" class="fullscreen-action-btn">
+          <svg style="width: 18px; height: 18px; fill: currentColor;" viewBox="0 0 24 24">
+            <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+          </svg>
+          <span id="fullscreenBtnText">全画面表示</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       TRANSLATION / I18N DICTIONARY
+       ========================================================================== */
+    const I18N = {
+      ja: {
+        panelTitle: "設定",
+        labelFont: "フォント",
+        labelColor: "文字色",
+        labelTheme: "背景色",
+        labelSeconds: "秒数表示",
+        labelSize: "文字サイズ",
+        labelDate: "年月日表示",
+        labelKeepAwake: "画面常時点灯 (スリープ防止)",
+        labelLang: "言語 / Language",
+        labelBattery: "バッテリー表示",
+        fullscreen: "全画面表示",
+        exitFullscreen: "全画面解除",
+        optOn: "表示 (ON)",
+        optOff: "非表示 (OFF)",
+        optSmall: "小",
+        optMedium: "中",
+        optLarge: "大",
+        optXLarge: "特大 (画面8割)",
+        colorWhite: "ホワイト",
+        colorCyan: "シアン",
+        colorAmber: "アンバー",
+        colorMint: "ミント",
+        colorRose: "ローズ",
+        themeBlack: "ブラック",
+        themeNavy: "ネイビー",
+        themeGreen: "ダークグリーン",
+        themeGray: "ライトグレー",
+        themeIvory: "アイボリー",
+        batteryNotAvailable: "取得不可",
+        batteryCharging: "充電中",
+        days: ["日", "月", "火", "水", "木", "金", "土"],
+        months: ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"]
+      },
+      en: {
+        panelTitle: "Settings",
+        labelFont: "Font",
+        labelColor: "Font Color",
+        labelTheme: "Theme Color",
+        labelSeconds: "Seconds",
+        labelSize: "Font Size",
+        labelDate: "Date Display",
+        labelKeepAwake: "Keep Screen Awake",
+        labelLang: "Language",
+        labelBattery: "Battery Indicator",
+        fullscreen: "Fullscreen",
+        exitFullscreen: "Exit Fullscreen",
+        optOn: "ON",
+        optOff: "OFF",
+        optSmall: "Small",
+        optMedium: "Medium",
+        optLarge: "Large",
+        optXLarge: "Extra Large (80%)",
+        colorWhite: "White",
+        colorCyan: "Cyan",
+        colorAmber: "Amber",
+        colorMint: "Mint",
+        colorRose: "Rose",
+        themeBlack: "Black",
+        themeNavy: "Dark Navy",
+        themeGreen: "Dark Green",
+        themeGray: "Light Gray",
+        themeIvory: "Ivory",
+        batteryNotAvailable: "N/A",
+        batteryCharging: "Charging",
+        days: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+        months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+      }
+    };
+
+    /* ==========================================================================
+       THEME & COLOR DEFINITIONS
+       ========================================================================== */
+    const TEXT_COLORS = {
+      white: { hex: "#FFFFFF", rgb: "255, 255, 255" },
+      cyan: { hex: "#00F3FF", rgb: "0, 243, 255" },
+      amber: { hex: "#FFB800", rgb: "255, 184, 0" },
+      mint: { hex: "#00FF9D", rgb: "0, 255, 157" },
+      rose: { hex: "#FF2E93", rgb: "255, 46, 147" }
+    };
+
+    const THEMES = {
+      black: { bg: "#000000", panelBg: "rgba(20, 20, 25, 0.88)", panelText: "#ffffff" },
+      navy: { bg: "#101827", panelBg: "rgba(15, 23, 42, 0.9)", panelText: "#f3f4f6" },
+      green: { bg: "#10251D", panelBg: "rgba(12, 32, 25, 0.9)", panelText: "#e6f4ea" },
+      gray: { bg: "#E8EAED", panelBg: "rgba(255, 255, 255, 0.92)", panelText: "#1f2937" },
+      ivory: { bg: "#F5F0E6", panelBg: "rgba(255, 253, 248, 0.92)", panelText: "#2d2a26" }
+    };
+
+    /* ==========================================================================
+       STATE MANAGEMENT & LOCAL STORAGE
+       ========================================================================== */
+    const DEFAULT_CONFIG = {
+      font: "font-sans",
+      textColor: "white",
+      theme: "black",
+      seconds: "on",
+      size: "size-large",
+      date: "on",
+      keepAwake: "on",
+      lang: "ja",
+      battery: "on"
+    };
+
+    let config = { ...DEFAULT_CONFIG };
+
+    function loadConfig() {
+      try {
+        const saved = localStorage.getItem("digital_clock_studio_config");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          config = { ...DEFAULT_CONFIG, ...parsed };
+        }
+      } catch (e) {
+        console.warn("Failed to load state from localStorage, using defaults.", e);
+        config = { ...DEFAULT_CONFIG };
+      }
+    }
+
+    function saveConfig() {
+      try {
+        localStorage.setItem("digital_clock_studio_config", JSON.stringify(config));
+      } catch (e) {
+        console.warn("Failed to save state to localStorage.", e);
+      }
+    }
+
+    /* ==========================================================================
+       DOM ELEMENTS
+       ========================================================================== */
+    const appEl = document.getElementById("app");
+    const openSettingsBtn = document.getElementById("openSettingsBtn");
+    const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+    const panelBackdrop = document.getElementById("panelBackdrop");
+    const fullscreenBtn = document.getElementById("fullscreenBtn");
+    const fullscreenBtnText = document.getElementById("fullscreenBtnText");
+    const batteryDisplay = document.getElementById("batteryDisplay");
+    const batteryLevelEl = document.getElementById("batteryLevel");
+    const batteryTextEl = document.getElementById("batteryText");
+    const dateContainer = document.getElementById("dateContainer");
+    const dateTextEl = document.getElementById("dateText");
+
+    // Clock Units
+    const landHH = document.getElementById("landHH");
+    const landMM = document.getElementById("landMM");
+    const landSS = document.getElementById("landSS");
+    const portHH = document.getElementById("portHH");
+    const portMM = document.getElementById("portMM");
+    const portSS = document.getElementById("portSS");
+
+    /* ==========================================================================
+       SCREEN WAKE LOCK (常時点灯機能)
+       ========================================================================== */
+    let wakeLockSentinel = null;
+
+    async function requestWakeLock() {
+      if (config.keepAwake === "off") {
+        releaseWakeLock();
+        return;
+      }
+      if ("wakeLock" in navigator && !wakeLockSentinel) {
+        try {
+          wakeLockSentinel = await navigator.wakeLock.request("screen");
+          wakeLockSentinel.addEventListener("release", () => {
+            wakeLockSentinel = null;
+          });
+        } catch (err) {
+          console.warn("Wake Lock request failed:", err);
+        }
+      }
+    }
+
+    function releaseWakeLock() {
+      if (wakeLockSentinel) {
+        wakeLockSentinel.release().catch(() => {});
+        wakeLockSentinel = null;
+      }
+    }
+
+    // タブが再度アクティブになった時にWakeLockを再取得
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        requestWakeLock();
+      }
+    });
+
+    /* ==========================================================================
+       CORE CLOCK & DATE LOGIC
+       ========================================================================== */
+    let lastSecond = -1;
+
+    function updateClock() {
+      const now = new Date();
+      const currentSecond = now.getSeconds();
+
+      if (currentSecond !== lastSecond) {
+        lastSecond = currentSecond;
+
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(currentSecond).padStart(2, '0');
+
+        // Update Landscape
+        if (landHH.textContent !== hours) landHH.textContent = hours;
+        if (landMM.textContent !== minutes) landMM.textContent = minutes;
+        landSS.textContent = `:${seconds}`;
+
+        // Update Portrait
+        if (portHH.textContent !== hours) portHH.textContent = hours;
+        if (portMM.textContent !== minutes) portMM.textContent = minutes;
+        portSS.textContent = seconds;
+
+        // Update Date if visible
+        if (config.date === "on") {
+          updateDateDisplay(now);
+        }
+      }
+    }
+
+    function updateDateDisplay(now) {
+      const year = now.getFullYear();
+      const monthIndex = now.getMonth();
+      const day = now.getDate();
+      const dayIndex = now.getDay();
+
+      const langDict = I18N[config.lang] || I18N.ja;
+
+      if (config.lang === "ja") {
+        const dayStr = langDict.days[dayIndex];
+        dateTextEl.textContent = `${year}年${monthIndex + 1}月${day}日（${dayStr}）`;
+      } else {
+        const dayStr = langDict.days[dayIndex];
+        const monthStr = langDict.months[monthIndex];
+        dateTextEl.textContent = `${dayStr}, ${monthStr} ${day}, ${year}`;
+      }
+    }
+
+    function startClockLoop() {
+      updateClock();
+      setInterval(updateClock, 200);
+    }
+
+    /* ==========================================================================
+       BATTERY STATUS API INTEGRATION
+       ========================================================================== */
+    let batteryObject = null;
+
+    function initBattery() {
+      if (config.battery === "off") {
+        batteryDisplay.classList.add("hidden");
+        return;
+      }
+
+      batteryDisplay.classList.remove("hidden");
+
+      if ("getBattery" in navigator) {
+        navigator.getBattery().then(battery => {
+          batteryObject = battery;
+          updateBatteryStatus();
+
+          battery.addEventListener("levelchange", updateBatteryStatus);
+          battery.addEventListener("chargingchange", updateBatteryStatus);
+        }).catch(() => {
+          setBatteryUnavailable();
+        });
+      } else {
+        setBatteryUnavailable();
+      }
+    }
+
+    function updateBatteryStatus() {
+      if (!batteryObject) return;
+      const level = Math.round(batteryObject.level * 100);
+      const isCharging = batteryObject.charging;
+      const langDict = I18N[config.lang] || I18N.ja;
+
+      batteryLevelEl.style.width = `${level}%`;
+      batteryTextEl.textContent = `${level}%${isCharging ? ` (${langDict.batteryCharging})` : ''}`;
+    }
+
+    function setBatteryUnavailable() {
+      const langDict = I18N[config.lang] || I18N.ja;
+      batteryLevelEl.style.width = "0%";
+      batteryTextEl.textContent = langDict.batteryNotAvailable;
+    }
+
+    /* ==========================================================================
+       UI & PREFERENCES APPLY LOGIC
+       ========================================================================== */
+    function applyConfig() {
+      // 1. Font Family & Size
+      appEl.className = `${config.font} ${config.size}`;
+
+      // 2. Theme Colors
+      const activeTheme = THEMES[config.theme] || THEMES.black;
+      document.documentElement.style.setProperty('--bg-color', activeTheme.bg);
+      document.documentElement.style.setProperty('--panel-bg', activeTheme.panelBg);
+      document.documentElement.style.setProperty('--panel-text', activeTheme.panelText);
+
+      // 3. Text Color Selection
+      const colorObj = TEXT_COLORS[config.textColor] || TEXT_COLORS.white;
+      
+      let textColorHex = colorObj.hex;
+      let textColorRgb = colorObj.rgb;
+
+      // Adjust white text contrast on light background themes
+      if ((config.theme === 'gray' || config.theme === 'ivory') && config.textColor === 'white') {
+        textColorHex = activeTheme.panelText;
+        textColorRgb = config.theme === 'gray' ? '31, 41, 55' : '45, 42, 38';
+      }
+
+      document.documentElement.style.setProperty('--text-color', textColorHex);
+      document.documentElement.style.setProperty('--sub-color', `rgba(${textColorRgb}, 0.7)`);
+
+      if (config.theme === 'gray' || config.theme === 'ivory') {
+        document.documentElement.style.setProperty('--panel-border', 'rgba(0, 0, 0, 0.15)');
+        document.documentElement.style.setProperty('--item-bg', 'rgba(0, 0, 0, 0.05)');
+      } else {
+        document.documentElement.style.setProperty('--panel-border', 'rgba(255, 255, 255, 0.15)');
+        document.documentElement.style.setProperty('--item-bg', 'rgba(255, 255, 255, 0.08)');
+      }
+
+      // 4. Seconds Visibility
+      if (config.seconds === "on") {
+        landSS.classList.remove("hidden");
+        portSS.classList.remove("hidden");
+      } else {
+        landSS.classList.add("hidden");
+        portSS.classList.add("hidden");
+      }
+
+      // 5. Date Visibility
+      if (config.date === "on") {
+        dateContainer.classList.remove("hidden");
+        updateDateDisplay(new Date());
+      } else {
+        dateContainer.classList.add("hidden");
+      }
+
+      // 6. Keep Awake Apply
+      requestWakeLock();
+
+      // 7. Battery Display Visibility & Update
+      initBattery();
+
+      // 8. UI Text / i18n
+      updateTranslations();
+
+      // 9. Update Active States in Settings Options
+      updateOptionButtons();
+    }
+
+    function updateTranslations() {
+      const dict = I18N[config.lang] || I18N.ja;
+
+      document.getElementById("panelTitle").textContent = dict.panelTitle;
+      document.getElementById("labelFont").textContent = dict.labelFont;
+      document.getElementById("labelColor").textContent = dict.labelColor;
+      document.getElementById("labelTheme").textContent = dict.labelTheme;
+      document.getElementById("labelSeconds").textContent = dict.labelSeconds;
+      document.getElementById("labelSize").textContent = dict.labelSize;
+      document.getElementById("labelDate").textContent = dict.labelDate;
+      document.getElementById("labelKeepAwake").textContent = dict.labelKeepAwake;
+      document.getElementById("labelLang").textContent = dict.labelLang;
+      document.getElementById("labelBattery").textContent = dict.labelBattery;
+
+      const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      fullscreenBtnText.textContent = isFull ? dict.exitFullscreen : dict.fullscreen;
+
+      document.querySelectorAll("[data-key]").forEach(el => {
+        const key = el.getAttribute("data-key");
+        if (dict[key]) el.textContent = dict[key];
+      });
+
+      if (batteryObject) {
+        updateBatteryStatus();
+      } else if (config.battery === "on") {
+        setBatteryUnavailable();
+      }
+    }
+
+    function updateOptionButtons() {
+      document.querySelectorAll("#fontOptions .option-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-font") === config.font);
+      });
+
+      document.querySelectorAll("#textColorOptions .option-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-color") === config.textColor);
+      });
+
+      document.querySelectorAll("#themeOptions .option-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-theme") === config.theme);
+      });
+
+      document.querySelectorAll("#secondsOptions .option-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-seconds") === config.seconds);
+      });
+
+      document.querySelectorAll("#sizeOptions .option-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-size") === config.size);
+      });
+
+      document.querySelectorAll("#dateOptions .option-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-date") === config.date);
+      });
+
+      document.querySelectorAll("#keepAwakeOptions .option-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-keepawake") === config.keepAwake);
+      });
+
+      document.querySelectorAll("#langOptions .option-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-lang") === config.lang);
+      });
+
+      document.querySelectorAll("#batteryOptions .option-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.getAttribute("data-battery") === config.battery);
+      });
+    }
+
+    /* ==========================================================================
+       SETTINGS EVENT HANDLERS
+       ========================================================================== */
+    function setupSettingsListeners() {
+      openSettingsBtn.addEventListener("click", () => panelBackdrop.classList.add("open"));
+      closeSettingsBtn.addEventListener("click", () => panelBackdrop.classList.remove("open"));
+      panelBackdrop.addEventListener("click", () => panelBackdrop.classList.remove("open"));
+
+      document.getElementById("fontOptions").addEventListener("click", e => {
+        const btn = e.target.closest("[data-font]");
+        if (btn) {
+          config.font = btn.getAttribute("data-font");
+          saveConfig();
+          applyConfig();
+        }
+      });
+
+      document.getElementById("textColorOptions").addEventListener("click", e => {
+        const btn = e.target.closest("[data-color]");
+        if (btn) {
+          config.textColor = btn.getAttribute("data-color");
+          saveConfig();
+          applyConfig();
+        }
+      });
+
+      document.getElementById("themeOptions").addEventListener("click", e => {
+        const btn = e.target.closest("[data-theme]");
+        if (btn) {
+          config.theme = btn.getAttribute("data-theme");
+          saveConfig();
+          applyConfig();
+        }
+      });
+
+      document.getElementById("secondsOptions").addEventListener("click", e => {
+        const btn = e.target.closest("[data-seconds]");
+        if (btn) {
+          config.seconds = btn.getAttribute("data-seconds");
+          saveConfig();
+          applyConfig();
+        }
+      });
+
+      document.getElementById("sizeOptions").addEventListener("click", e => {
+        const btn = e.target.closest("[data-size]");
+        if (btn) {
+          config.size = btn.getAttribute("data-size");
+          saveConfig();
+          applyConfig();
+        }
+      });
+
+      document.getElementById("dateOptions").addEventListener("click", e => {
+        const btn = e.target.closest("[data-date]");
+        if (btn) {
+          config.date = btn.getAttribute("data-date");
+          saveConfig();
+          applyConfig();
+        }
+      });
+
+      document.getElementById("keepAwakeOptions").addEventListener("click", e => {
+        const btn = e.target.closest("[data-keepawake]");
+        if (btn) {
+          config.keepAwake = btn.getAttribute("data-keepawake");
+          saveConfig();
+          applyConfig();
+        }
+      });
+
+      document.getElementById("langOptions").addEventListener("click", e => {
+        const btn = e.target.closest("[data-lang]");
+        if (btn) {
+          config.lang = btn.getAttribute("data-lang");
+          saveConfig();
+          applyConfig();
+        }
+      });
+
+      document.getElementById("batteryOptions").addEventListener("click", e => {
+        const btn = e.target.closest("[data-battery]");
+        if (btn) {
+          config.battery = btn.getAttribute("data-battery");
+          saveConfig();
+          applyConfig();
+        }
+      });
+
+      fullscreenBtn.addEventListener("click", toggleFullscreen);
+    }
+
+    /* ==========================================================================
+       FULLSCREEN API & SYNC
+       ========================================================================== */
+    function toggleFullscreen() {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        const docEl = document.documentElement;
+        if (docEl.requestFullscreen) {
+          docEl.requestFullscreen().catch(() => {});
+        } else if (docEl.webkitRequestFullscreen) {
+          docEl.webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        }
+      }
+    }
+
+    function syncFullscreenUI() {
+      const dict = I18N[config.lang] || I18N.ja;
+      const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      fullscreenBtnText.textContent = isFull ? dict.exitFullscreen : dict.fullscreen;
+    }
+
+    document.addEventListener("fullscreenchange", syncFullscreenUI);
+    document.addEventListener("webkitfullscreenchange", syncFullscreenUI);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "f" || e.key === "F") {
+        if (document.activeElement.tagName !== "INPUT") {
+          toggleFullscreen();
+        }
+      }
+      if (e.key === " ") {
+        if (document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "BUTTON") {
+          panelBackdrop.classList.toggle("open");
+        }
+      }
+      if (e.key === "Escape") {
+        panelBackdrop.classList.remove("open");
+      }
+    });
+
+    document.getElementById("clockContainer").addEventListener("dblclick", () => {
+      panelBackdrop.classList.add("open");
+    });
+
+    /* ==========================================================================
+       INITIALIZATION
+       ========================================================================== */
+    window.addEventListener("DOMContentLoaded", () => {
+      loadConfig();
+      applyConfig();
+      setupSettingsListeners();
+      startClockLoop();
+    });
+  </script>
+</body>
+</html>
